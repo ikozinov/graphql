@@ -83,17 +83,6 @@ func (c *Client) logf(format string, args ...interface{}) {
 // Run executes the query and unmarshals the response from the data field
 // into the response object.
 // Pass in a nil response object to skip response parsing.
-// If the request fails or the server returns an error, the returned error will
-// be of type Errors. Type assert to get the underlying errors:
-//   err := client.Run(..)
-//   if err != nil {
-//     if gqlErrors, ok := err.(graphql.Errors); ok {
-//       for _, e := range gqlErrors {
-//         // Server returned an error
-//       }
-//     }
-//     // Another error occurred
-//   }
 func (c *Client) Run(ctx context.Context, req *Request, resp interface{}) error {
 	select {
 	case <-ctx.Done():
@@ -126,11 +115,43 @@ func (c *Client) runWithJSON(ctx context.Context, req *Request, resp interface{}
 	}
 	c.logf(">> variables: %v", req.vars)
 	c.logf(">> query: %s", req.q)
-
-	req.body = requestBody
-	req.contentType = "application/json; charset=utf-8"
-
-	return c.makeRequest(ctx, req, resp)
+	gr := &graphResponse{
+		Data: resp,
+	}
+	r, err := http.NewRequest(http.MethodPost, c.endpoint, &requestBody)
+	if err != nil {
+		return err
+	}
+	r.Close = c.closeReq
+	r.Header.Set("Content-Type", "application/json; charset=utf-8")
+	r.Header.Set("Accept", "application/json; charset=utf-8")
+	for key, values := range req.Header {
+		for _, value := range values {
+			r.Header.Add(key, value)
+		}
+	}
+	c.logf(">> headers: %v", r.Header)
+	r = r.WithContext(ctx)
+	res, err := c.httpClient.Do(r)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, res.Body); err != nil {
+		return errors.Wrap(err, "reading body")
+	}
+	c.logf("<< %s", buf.String())
+	if err := json.NewDecoder(&buf).Decode(&gr); err != nil {
+		if res.StatusCode != http.StatusOK {
+			return fmt.Errorf("graphql: server returned a non-200 status code: %v", res.StatusCode)
+		}
+		return errors.Wrap(err, "decoding response")
+	}
+	if len(gr.Errors) > 0 {
+		return gr.Errors
+	}
+	return nil
 }
 
 func (c *Client) runWithPostFields(ctx context.Context, req *Request, resp interface{}) error {
@@ -352,46 +373,37 @@ func ImmediatelyCloseReqBody() ClientOption {
 // modify the behaviour of the Client.
 type ClientOption func(*Client)
 
-// Errors contains all the errors that were returned by the GraphQL server.
-type Errors []Error
-
-func (ee Errors) Error() string {
-	if len(ee) == 0 {
-		return "no errors"
-	}
-	errs := make([]string, len(ee))
-	for i, e := range ee {
-		errs[i] = e.Message
-	}
-	return "graphql: " + strings.Join(errs, "; ")
-}
-
-// An Error contains error information returned by the GraphQL server.
+// Error represents a GraphQL error
 type Error struct {
-	// Message contains the error message.
-	Message string
-	// Locations contains the locations in the GraphQL document that caused the
-	// error if the error can be associated to a particular point in the
-	// requested GraphQL document.
-	Locations []Location
-	// Path contains the key path of the response field which experienced the
-	// error. This allows clients to identify whether a nil result is
-	// intentional or caused by a runtime error.
-	Path []interface{}
-	// Extensions may contain additional fields set by the GraphQL service,
-	// such as	an error code.
+	Message   string
+	Locations []struct {
+		Line   int
+		Column int
+	}
+	Path       []interface{}
 	Extensions map[string]interface{}
 }
 
-// A Location is a location in the GraphQL query that resulted in an error.
-// The location may be returned as part of an error response.
-type Location struct {
-	Line   int
-	Column int
+// Error implements error interface
+func (e Error) Error() string {
+	return fmt.Sprintf("graphql: %s", e.Message)
 }
 
-func (e Error) Error() string {
-	return "graphql: " + e.Message
+// Errors represents a list of GraphQL errors
+type Errors []Error
+
+// Error implements error interface
+func (l Errors) Error() string {
+	if len(l) == 0 {
+		return "no error"
+	}
+
+	result := make([]string, len(l))
+	for i, e := range l {
+		result[i] = e.Message
+	}
+
+	return fmt.Sprintf("graphql: %s", strings.Join(result, " | "))
 }
 
 type graphResponse struct {
