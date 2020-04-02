@@ -1,4 +1,4 @@
-module github.com/digroad/graphql
+module github.com/ikozinov/graphql
 
 go 1.14
 
