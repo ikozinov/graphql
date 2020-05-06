@@ -38,8 +38,8 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"strings"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -272,7 +272,7 @@ func (c *Client) makeRequest(ctx context.Context, req *Request, resp interface{}
 
 type multipartRequestSpecQuery struct {
 	Operations struct {
-		Query string `json:"query"`
+		Query     string      `json:"query"`
 		Variables interface{} `json:"variables"`
 	} `json:"operations"`
 	Map map[string][]string `json:"map"`
@@ -280,10 +280,10 @@ type multipartRequestSpecQuery struct {
 
 func (req *Request) fillMultipartRequestSpecQuery() multipartRequestSpecQuery {
 
-	type Variables struct{
-		Files [] interface{} `json:"files"`
+	type Variables struct {
+		Files []interface{} `json:"files"`
 	}
-	type VariablesEmpty struct{
+	type VariablesEmpty struct {
 	}
 
 	query := new(multipartRequestSpecQuery)
