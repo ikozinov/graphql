@@ -279,32 +279,40 @@ type multipartRequestSpecQuery struct {
 }
 
 func (req *Request) fillMultipartRequestSpecQuery() multipartRequestSpecQuery {
-
-	type Variables struct {
+	type fileVariables struct {
+		File interface{} `json:"file"`
+	}
+	type filesVariables struct {
 		Files []interface{} `json:"files"`
 	}
-	type VariablesEmpty struct {
+	type emptyVariables struct {
 	}
 
 	query := new(multipartRequestSpecQuery)
-	variables := new(Variables)
-
 	query.Operations.Query = req.Query()
 	query.Map = make(map[string][]string)
 
-	for index, file := range req.Files() {
-		variables.Files = append(variables.Files, nil)
-
-		query.Map[file.Field] = []string{`variables.files.` + strconv.Itoa(index)}
-	}
-
-	if len(req.Files()) > 0 {
+	switch c := len(req.Files()); {
+	default:
+		fallthrough
+	case c == 0:
+		query.Operations.Variables = new(emptyVariables)
+		return *query
+	case c == 1:
+		variables := new(fileVariables)
+		variables.File = nil
+		query.Map[req.Files()[0].Field] = []string{`variables.file`}
 		query.Operations.Variables = variables
-	} else {
-		query.Operations.Variables = new(VariablesEmpty)
+		return *query
+	case c > 0:
+		variables := new(filesVariables)
+		for index, file := range req.Files() {
+			variables.Files = append(variables.Files, nil)
+			query.Map[file.Field] = []string{`variables.files.` + strconv.Itoa(index)}
+		}
+		query.Operations.Variables = variables
+		return *query
 	}
-
-	return *query
 }
 
 // WithHTTPClient specifies the underlying http.Client to use when

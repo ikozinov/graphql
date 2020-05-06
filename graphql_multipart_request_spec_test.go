@@ -245,10 +245,10 @@ func TestFileMpRS(t *testing.T) {
 		is.NoErr(err)
 
 		operations := r.FormValue("operations")
-		is.Equal(operations, `{"query":"query {}","variables":{"files":[null]}}`)
+		is.Equal(operations, `{"query":"query {}","variables":{"file":null}}`)
 
 		maps := r.FormValue("map")
-		is.Equal(maps, `{"file":["variables.files.0"]}`)
+		is.Equal(maps, `{"file":["variables.file"]}`)
 	}))
 	defer srv.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
