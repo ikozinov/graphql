@@ -43,7 +43,7 @@ func TestDoUseMultipartFormMpRS(t *testing.T) {
 		calls++
 		is.Equal(r.Method, http.MethodPost)
 		operations := r.FormValue("operations")
-		is.Equal(operations, `{"query":"query {}","variables":{}}`)
+		is.Equal(operations, `{"query":"query {}","variables":{"file":null}}`)
 		io.WriteString(w, `{
 			"data": {
 				"something": "yes"
@@ -58,11 +58,15 @@ func TestDoUseMultipartFormMpRS(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	var responseData map[string]interface{}
-	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
+	f := strings.NewReader(`This is a file`)
+	req := NewRequest("query {}")
+	req.File("file", "filename.txt", f)
+	err := client.Run(ctx, req, &responseData)
 	is.NoErr(err)
 	is.Equal(calls, 1) // calls
 	is.Equal(responseData["something"], "yes")
 }
+
 func TestImmediatelyCloseReqBodyMpRS(t *testing.T) {
 	is := is.New(t)
 	var calls int
@@ -70,7 +74,7 @@ func TestImmediatelyCloseReqBodyMpRS(t *testing.T) {
 		calls++
 		is.Equal(r.Method, http.MethodPost)
 		operations := r.FormValue("operations")
-		is.Equal(operations, `{"query":"query {}","variables":{}}`)
+		is.Equal(operations, `{"query":"query {}","variables":{"file":null}}`)
 		io.WriteString(w, `{
 			"data": {
 				"something": "yes"
@@ -85,7 +89,10 @@ func TestImmediatelyCloseReqBodyMpRS(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	var responseData map[string]interface{}
-	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
+	f := strings.NewReader(`This is a file`)
+	req := NewRequest("query {}")
+	req.File("file", "filename.txt", f)
+	err := client.Run(ctx, req, &responseData)
 	is.NoErr(err)
 	is.Equal(calls, 1) // calls
 	is.Equal(responseData["something"], "yes")
@@ -98,7 +105,7 @@ func TestDoErrMpRS(t *testing.T) {
 		calls++
 		is.Equal(r.Method, http.MethodPost)
 		operations := r.FormValue("operations")
-		is.Equal(operations, `{"query":"query {}","variables":{}}`)
+		is.Equal(operations, `{"query":"query {}","variables":{"file":null}}`)
 		io.WriteString(w, `{
 			"errors": [{
 				"message": "Something went wrong"
@@ -113,7 +120,10 @@ func TestDoErrMpRS(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	var responseData map[string]interface{}
-	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
+	f := strings.NewReader(`This is a file`)
+	req := NewRequest("query {}")
+	req.File("file", "filename.txt", f)
+	err := client.Run(ctx, req, &responseData)
 	is.True(err != nil)
 	is.Equal(err.Error(), "graphql: Something went wrong")
 }
@@ -125,7 +135,7 @@ func TestDoServerErrMpRS(t *testing.T) {
 		calls++
 		is.Equal(r.Method, http.MethodPost)
 		operations := r.FormValue("operations")
-		is.Equal(operations, `{"query":"query {}","variables":{}}`)
+		is.Equal(operations, `{"query":"query {}","variables":{"file":null}}`)
 		w.WriteHeader(http.StatusInternalServerError)
 		io.WriteString(w, `Internal Server Error`)
 	}))
@@ -137,7 +147,10 @@ func TestDoServerErrMpRS(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	var responseData map[string]interface{}
-	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
+	f := strings.NewReader(`This is a file`)
+	req := NewRequest("query {}")
+	req.File("file", "filename.txt", f)
+	err := client.Run(ctx, req, &responseData)
 	is.Equal(err.Error(), "graphql: server returned a non-200 status code: 500")
 }
 
@@ -148,7 +161,7 @@ func TestDoBadRequestErrMpRS(t *testing.T) {
 		calls++
 		is.Equal(r.Method, http.MethodPost)
 		operations := r.FormValue("operations")
-		is.Equal(operations, `{"query":"query {}","variables":{}}`)
+		is.Equal(operations, `{"query":"query {}","variables":{"file":null}}`)
 		w.WriteHeader(http.StatusBadRequest)
 		io.WriteString(w, `{
 			"errors": [{
@@ -164,7 +177,10 @@ func TestDoBadRequestErrMpRS(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	var responseData map[string]interface{}
-	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
+	f := strings.NewReader(`This is a file`)
+	req := NewRequest("query {}")
+	req.File("file", "filename.txt", f)
+	err := client.Run(ctx, req, &responseData)
 	is.Equal(err.Error(), "graphql: miscellaneous message as to why the the request was bad")
 }
 
@@ -175,7 +191,7 @@ func TestDoNoResponseMpRS(t *testing.T) {
 		calls++
 		is.Equal(r.Method, http.MethodPost)
 		operations := r.FormValue("operations")
-		is.Equal(operations, `{"query":"query {}","variables":{}}`)
+		is.Equal(operations, `{"query":"query {}","variables":{"file":null}}`)
 		io.WriteString(w, `{
 			"data": {
 				"something": "yes"
@@ -189,7 +205,10 @@ func TestDoNoResponseMpRS(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
-	err := client.Run(ctx, &Request{q: "query {}"}, nil)
+	f := strings.NewReader(`This is a file`)
+	req := NewRequest("query {}")
+	req.File("file", "filename.txt", f)
+	err := client.Run(ctx, req, nil)
 	is.NoErr(err)
 	is.Equal(calls, 1) // calls
 }
@@ -212,7 +231,9 @@ func TestQueryMpRS(t *testing.T) {
 
 	client := NewClient(srv.URL, UseMultipartRequestSpec())
 
+	f := strings.NewReader(`This is a file`)
 	req := NewRequest("query {}")
+	req.File("file", "filename.txt", f)
 	req.Var("username", "matryer")
 
 	// check variables

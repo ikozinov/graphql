@@ -106,7 +106,7 @@ func (c *Client) Run(ctx context.Context, req *Request, resp interface{}) error 
 	if c.useMultipartForm {
 		return c.runWithPostFields(ctx, req, resp)
 	}
-	if c.useMultipartRequestSpec {
+	if c.useMultipartRequestSpec && len(req.Files()) > 0 {
 		return c.runMultipartRequestSpec(ctx, req, resp)
 	}
 	return c.runWithJSON(ctx, req, resp)
