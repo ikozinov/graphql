@@ -116,7 +116,7 @@ func TestDoErr(t *testing.T) {
 	var responseData map[string]interface{}
 	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
 	is.True(err != nil)
-	is.Equal(err.Error(), "graphql: Something went wrong; Something else went wrong")
+	is.Equal(err.Error(), "graphql: Something went wrong | Something else went wrong")
 }
 
 func TestDoServerErr(t *testing.T) {

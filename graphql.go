@@ -375,13 +375,16 @@ type ClientOption func(*Client)
 
 // Error represents a GraphQL error
 type Error struct {
-	Message   string
-	Locations []struct {
-		Line   int
-		Column int
-	}
+	Message    string
+	Locations  []Location
 	Path       []interface{}
 	Extensions map[string]interface{}
+}
+
+// Location represents error location in request
+type Location struct {
+	Line   int
+	Column int
 }
 
 // Error implements error interface

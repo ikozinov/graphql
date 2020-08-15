@@ -94,7 +94,7 @@ func TestDoJSONBadRequestErr(t *testing.T) {
 	var responseData map[string]interface{}
 	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
 	is.Equal(calls, 1) // calls
-	is.Equal(err.Error(), "graphql: miscellaneous message as to why the the request was bad; another error")
+	is.Equal(err.Error(), "graphql: miscellaneous message as to why the the request was bad | another error")
 }
 
 func TestDoJSONBadRequestErrDetails(t *testing.T) {
